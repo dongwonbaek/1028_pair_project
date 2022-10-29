@@ -52,7 +52,7 @@ def detail(request, pk):
 @login_required
 def update(request, pk):
     review = Review.objects.get(pk=pk)
-    if request.method == "POST":
+    if request.method == "POST" and review.user == request.user:
         form = ReviewForm(request.POST, instance=review)
         if form.is_valid():
             form.save()
@@ -69,7 +69,8 @@ def update(request, pk):
 @login_required
 def delete(request, pk):
     review = Review.objects.get(pk=pk)
-    review.delete()
+    if review.user == request.user:
+        review.delete() 
     return redirect("reviews:index")
 
 
@@ -94,18 +95,19 @@ def search(request):
 def comments_create(request, pk):
     review = Review.objects.get(pk=pk)
     comment_form = CommentForm(request.POST)
-    if comment_form.is_valid():
-        comment = comment_form.save(commit=False)
-        comment.review = review
-        comment.user = request.user
-        comment.save()
-        comments = []
-        for a in review.comment_set.all():
-            comments.append([a.content, a.user.username, a.create_at, a.user.id, request.user.id, a.id, a.review.id])
-        context = {
-            'comments':comments
-        }
-        return JsonResponse(context)
+    if request.method == "POST":
+        if comment_form.is_valid():
+            comment = comment_form.save(commit=False)
+            comment.review = review
+            comment.user = request.user
+            comment.save()
+            comments = []
+            for a in review.comment_set.all():
+                comments.append([a.content, a.user.username, a.create_at, a.user.id, request.user.id, a.id, a.review.id])
+            context = {
+                'comments':comments
+            }
+            return JsonResponse(context)
 
 @login_required
 def comments_delete(request, review_pk, comment_pk):
